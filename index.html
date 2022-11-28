@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Lab 4 Web Page</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
+    <style>
+        h2,
+        h3 {
+            margin: 10px;
+            font-size: 18px;
+        }
+
+        h3 {
+            font-size: 16px;
+        }
+
+        p {
+            margin: 10px;
+        }
+
+        /**
+        * Create a position for the map
+        * on the page */
+        #map {
+            position: absolute;
+            top: -3;
+            bottom: 5;
+            left: 7;
+            right: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /**
+        * Set rules for how the map overlays
+        * (information box and legend) will be displayed
+         on the page. */
+        .map-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background: rgba(211, 174, 205, 0.8);
+            border-style: solid;
+            border-width: 1px;
+            border-color: rgba(14, 4, 12, 0.2);
+            margin-left: 20px;
+            font-family: Arial, sans-serif;
+            overflow: auto;
+            border-radius: 3px;
+        }
+
+        #features {
+            top: 0;
+            height: 150px;
+            margin-top: 20px;
+            width: 250px;
+        }
+
+        #legend {
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            line-height: 18px;
+            height: 150px;
+            margin-bottom: 40px;
+            width: 150px;
+        }
+
+        .legend-key {
+            display: inline-block;
+            border-radius: 20%;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+
+        .mapboxgl-canvas-container.mapboxgl-interactive,
+        .mapboxgl-ctrl-group button.mapboxgl-ctrl-compass {
+            cursor: unset;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div class='map-overlay' id='features'>
+        <h2>Covid Deaths within WA state counties</h2>
+        <div id='text-description'>
+            <p>Hover over a county!</p>
+        </div>
+    </div>
+    <div class='map-overlay' id='legend'></div>
+    <script>
+        // initialize basemmap
+        mapboxgl.accessToken =
+            'pk.eyJ1IjoiYW11bmFobWVkODkiLCJhIjoiY2xiMGV4NW0yMWl0NjN2bzdjM3F0bXIxMCJ9.ZzeVPPBW5vtsXFm9SLQ6YQ';
+        const map = new mapboxgl.Map({
+            container: 'map', // container ID
+            style: 'mapbox://styles/mapbox/light-v10', // style URL
+            zoom: 6, // starting zoom
+            center: [-122, 47] // starting center
+        });
+
+        // load data and add as layer
+        async function geojsonFetch() {
+            let response = await fetch('assets/wa_covid_data.geojson');
+            let wa_covid_data = await response.json();
+
+            map.on('load', function loadingData() {
+                map.addSource('wa_covid_data', {
+                    type: 'geojson',
+                    data: wa_covid_data
+                });
+
+                map.addLayer({
+                    'id': 'wa_covid_data_layer',
+                    'type': 'fill',
+                    'source': 'wa_covid_data',
+                    'paint': {
+                        'fill-color': [
+                            'step',
+                            ['get', 'deathPer10k'],
+                            '#ff97b8',   // stop_output_0
+                            10,          // stop_input_0
+                            '#ffb0c9',   // stop_output_1
+                            20,          // stop_input_1
+                            '#ffcadb',   // stop_output_2
+                            50,          // stop_input_2
+                            '#ffe3ec',   // stop_output_3
+                            100,         // stop_input_3
+                            '#E31A1C',   // stop_output_5
+                            500,         // stop_input_5
+                            '#BD0026',   // stop_output_6
+                            1000,        // stop_input_6
+                            "#800026"    // stop_output_7
+                           
+                        ],
+                        'fill-outline-color': '#d14',
+                        'fill-opacity': 0.9,
+                    }
+                });
+
+                const layers = [
+                    '0-9',
+                    '10-19',
+                    '20-49',
+                    '50-99',
+                ];
+                const colors = [
+
+                    '#ff97b8',
+                    '#ffb0c9',
+                    '#ffcadb70',
+                    '#ffe3ec70',
+                    
+                ];
+
+                // create legend
+                const legend = document.getElementById('legend');
+                legend.innerHTML = "<b> Covid Deaths<br>(per/10k people)</b><br><br>";
+
+
+                layers.forEach((layer, i) => {
+                    const color = colors[i];
+                    const item = document.createElement('div');
+                    const key = document.createElement('span');
+                    key.className = 'legend-key';
+                    key.style.backgroundColor = color;
+
+                    const value = document.createElement('span');
+                    value.innerHTML = `${layer}`;
+                    item.appendChild(key);
+                    item.appendChild(value);
+                    legend.appendChild(item);
+                });
+            });
+
+            map.on('mousemove', ({point}) => {
+                const county = map.queryRenderedFeatures(point, {
+                    layers: ['wa_covid_data_layer']
+                });
+                document.getElementById('text-description').innerHTML = county.length ?
+                    `<h3>${county[0].properties.name}</h3><p><strong><em>${county[0].properties.deathPer10k}</strong> Deaths per 10k people</em></p>` :
+                    `<p>Hover over a county!</p>`;
+            });
+        }
+
+        geojsonFetch();
+    </script>
+
+</body>
+
+</html>
